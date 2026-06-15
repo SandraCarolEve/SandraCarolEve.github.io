@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet - Depositar</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <style>
+        :root{
+            --app-primary: #7c4dff;
+            --app-primary-600: #6b3cff;
+            --app-accent: #9b6bff;
+            --muted: #6b7280;
+            --bg: #f4f6f9;
+        }
+        body { background: linear-gradient(180deg, #f7f9fc 0%, var(--bg) 100%); color: #222; }
+        .container { max-width: 900px; }
+        h2 { color: var(--app-primary); font-weight:700; margin-bottom: 8px; }
+        #saldoActualDisplay { font-size: 1.05rem; color: var(--app-primary); }
+        #btnDepositar { background: var(--app-accent); border-color: var(--app-accent); color: #fff; }
+        #btnDepositar:hover { background: #7a3cff; }
+        a.btn-link { color: var(--app-primary-600); }
+        a.btn-link:hover { color: var(--app-primary); text-decoration: none; }
+        /* Botón Volver al Menú estilo sendmoney */
+        #btnVolverMenu { background: transparent; color: var(--app-primary-600); border: 1px solid var(--app-primary-600); padding: .35rem .7rem; border-radius: .25rem; text-decoration:none; }
+        #btnVolverMenu:hover { background: var(--app-primary-600); color: #fff; }
+        #depositBox .form-control { max-width: 320px; }
+    </style>
+</head>
+<body>
+
+    <div class="container mt-5">
+        <h2>Depositar Dinero</h2>
+        <hr>
+        <div id="alertMensaje" class="alert alert-success alert-dismissible d-none" role="alert">
+            <button type="button" class="close" aria-label="Cerrar" id="closeAlertBtn"><span aria-hidden="true">&times;</span></button>
+            <span id="alertMensajeText"></span>
+        </div>
+
+        <div class="mb-3">
+            <strong>Saldo actual:</strong> <span id="saldoActualDisplay">$0.00</span>
+        </div>
+
+        <div id="depositBox">
+            <div class="form-group">
+                <label>Monto a depositar:</label>
+                <input type="number" class="form-control" id="inputDeposito">
+                <!-- Mensaje de validación inline similar a la imagen: aparece debajo del input -->
+                <div id="inputError" class="input-error d-none" role="alert">
+                    <span class="error-icon">!</span>
+                    <span id="inputErrorText">Por favor, ingresa un monto válido.</span>
+                </div>
+            </div>
+            <button type="button" id="btnDepositar" class="btn btn-success">Realizar depósito</button>
+        </div>
+        
+        <br>
+        <a id="btnVolverMenu" class="btn btn-sm ml-2" href="menu.html">Volver al Menú</a>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        /* Estilos para el mensaje de error inline debajo del input */
+        .form-group { position: relative; }
+        .input-error { position: absolute; left: 12px; top: calc(100% + 8px); background: #fff; border: 1px solid #ffd1a8; box-shadow: 0 6px 18px rgba(0,0,0,0.06); padding: 6px 10px; border-radius: 6px; display: flex; align-items: center; gap:8px; z-index: 30; }
+        .input-error::before { content: ''; position: absolute; left: 22px; top: -8px; border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 8px solid #fff; }
+        .error-icon { background: #ff7a00; color: #fff; border-radius: 4px; padding: 2px 6px; font-weight: 700; }
+        @media (max-width:576px){ .input-error{ left: 8px; right: 8px; width: auto; } }
+    </style>
+    <script>
+        var saldoActual = Number(localStorage.getItem('walletSaldo')) || 0;
+        // Helper para normalizar el tipo de transacción antes de guardarlo
+        function normalizeTipo(tipo) {
+            var t = (tipo || '').toString().trim().toLowerCase();
+            if (!t) return 'Desconocido';
+            if (t.indexOf('dep') !== -1) return 'Depósito';
+            if (t.indexOf('transfer') !== -1) return 'Transferencia';
+            return tipo.charAt(0).toUpperCase() + tipo.slice(1);
+        }
+        // Mostrar el saldo al cargar la página
+        $(function() {
+            $('#saldoActualDisplay').text('$' + saldoActual.toFixed(2));
+        });
+
+        // Función para mostrar la alerta de éxito (dismissible y auto-hide)
+        function showSuccessAlert(mensaje) {
+            $('#alertMensajeText').text(mensaje);
+            $('#alertMensaje').removeClass('d-none');
+            // Ocultar automáticamente tras 4 segundos
+            setTimeout(function() {
+                $('#alertMensaje').addClass('d-none');
+            }, 4000);
+        }
+
+        // Cerrar la alerta al pulsar la 'x'
+        $(document).on('click', '#closeAlertBtn', function() {
+            $('#alertMensaje').addClass('d-none');
+        });
+
+        // Ocultar el mensaje inline cuando el usuario escribe
+        $('#inputDeposito').on('input', function() {
+            $('#inputError').addClass('d-none');
+            $(this).removeClass('is-invalid');
+        });
+
+        // Mostrar mensaje inline personalizado
+        function showInputError(mensaje) {
+            $('#inputErrorText').text(mensaje || 'Por favor, ingresa un monto válido.');
+            $('#inputError').removeClass('d-none');
+            $('#inputDeposito').addClass('is-invalid').focus();
+        }
+
+        $('#btnDepositar').click(function() {
+            var monto = Number($('#inputDeposito').val());
+
+            if (monto > 0) {
+                // Actualizar saldo en localStorage
+                saldoActual = saldoActual + monto;
+                localStorage.setItem('walletSaldo', saldoActual);
+
+                // Actualizar display del saldo
+                $('#saldoActualDisplay').text('$' + saldoActual.toFixed(2));
+
+                // Mostrar mensaje al usuario (alerta Bootstrap dismissible + auto-hide)
+                showSuccessAlert('¡Depósito exitoso! Nuevo saldo: $' + saldoActual.toFixed(2));
+                $('#inputDeposito').val('');
+
+                // Registrar la transacción en el historial de transacciones
+                var txs = JSON.parse(localStorage.getItem('walletTransactions') || '[]');
+                var nuevaTx = {
+                    tipo: normalizeTipo('Depósito'),
+                    descripcion: 'Depósito realizado desde la interfaz',
+                    monto: monto,
+                    fecha: new Date().toLocaleString(),
+                    positivo: true
+                };
+                txs.push(nuevaTx);
+                localStorage.setItem('walletTransactions', JSON.stringify(txs));
+            } else {
+                // Mostrar mensaje inline en lugar de alert()
+                showInputError('Escribe un número válido mayor que 0.');
+            }
+        });
+    </script>
+</body>
+</html>

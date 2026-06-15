@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet - Menú</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <style>
+        :root{
+            --app-primary: #7c4dff;
+            --app-primary-600: #6b3cff;
+            --app-accent: #9b6bff;
+            --muted: #6b7280;
+            --bg: #f4f6f9;
+        }
+        body { background: linear-gradient(180deg, #f7f9fc 0%, var(--bg) 100%); color: #222; }
+        .container { max-width: 900px; }
+        h2 { color: var(--app-primary); font-weight:700; margin-bottom: 8px; }
+        #saldoDisplay { font-size: 1.05rem; color: var(--app-primary); }
+        /* Botones con paleta morada */
+        #btnDepositar { background: var(--app-primary); border-color: var(--app-primary); color: #fff; }
+        #btnDepositar:hover { background: var(--app-primary-600); border-color: var(--app-primary-600); }
+        #btnEnviarDinero { background: var(--app-accent); border-color: var(--app-accent); color: #fff; }
+        #btnEnviarDinero:hover { background: #7a3cff; }
+        #btnUltimoMov { background: transparent; color: var(--app-primary-600); border: 1px solid var(--app-primary-600); }
+        #btnUltimoMov:hover { background: var(--app-primary-600); color: #fff; }
+        #btnLogout { background: #3b0f66; border-color: #3b0f66; color: #fff; }
+        #btnLogout:hover { background: #2a0a4a; border-color: #2a0a4a; }
+        /* Leyendas y pequeños ajustes */
+        .text-info { color: var(--muted) !important; }
+    </style>
+</head>
+<body>
+
+    <div class="container mt-5 text-center">
+        <h2>Menú Principal</h2>
+        <hr>
+        
+        <!-- Mostrar saldo y contador de movimientos recientes -->
+        <h3>
+            Saldo actual: <span id="saldoDisplay" class="text-success">$0</span>
+            <!-- Contador de transacciones guardadas en localStorage -->
+            <small id="txCount" class="text-muted"></small>
+        </h3>
+        <br>
+        
+        
+        <a href="deposit.html" id="btnDepositar" class="btn btn-primary btn-block mb-2">Depositar</a>
+        <div id="leyenda" class="mt-2 text-info" style="display:none;"></div>
+        <br>
+        <a href="sendmoney.html" id="btnEnviarDinero" class="btn btn-info btn-block mb-2">Enviar Dinero</a>
+        <div id="leyenda1" class="mt-2 text-info" style="display:none;"></div>
+        <br>
+        <a href="transactions.html" id="btnUltimoMov" class="btn btn-secondary btn-block mb-4">Últimos Movimientos</a>
+        <div id="leyenda2" class="mt-2 text-info" style="display:none;"></div>
+        <br>
+        <button type="button" id="btnLogout" class="btn btn-danger">Cerrar Sesión</button>
+        
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // ----------------------------
+        // Mostrar saldo (desde localStorage)
+        // ----------------------------
+        var saldo = Number(localStorage.getItem('walletSaldo')) || 0;
+        $('#saldoDisplay').text('$' + saldo);
+
+        // ----------------------------
+        // Contador de movimientos: actualización en tiempo real
+        // ----------------------------
+        // Definimos una función para actualizar el contador desde localStorage.
+        function updateTxCount() {
+            var txs = JSON.parse(localStorage.getItem('walletTransactions') || '[]');
+            var txCount = (txs && txs.length) ? txs.length : 0;
+            $('#txCount').text('(' + txCount + (txCount === 1 ? ' movimiento' : ' movimientos') + ')');
+        }
+
+        // Llamada inicial para mostrar el contador al cargar la página
+        updateTxCount();
+
+        // Escuchar el evento 'storage' para detectar cambios en localStorage desde otras pestañas
+        // Al ocurrir un cambio en 'walletTransactions' o 'walletSaldo' actualizamos el contador/saldo
+        window.addEventListener('storage', function(e) {
+            if (!e) return;
+            if (e.key === 'walletTransactions') {
+                updateTxCount();
+            }
+            if (e.key === 'walletSaldo') {
+                // Si cambia el saldo en otra pestaña, actualizar también la vista del saldo
+                saldo = Number(localStorage.getItem('walletSaldo')) || 0;
+                $('#saldoDisplay').text('$' + saldo);
+            }
+        });
+
+        // También actualizamos cuando la ventana vuelve a tener foco (por ejemplo, al navegar entre páginas)
+        window.addEventListener('focus', function() {
+            // Refrescar saldo y contador al volver al foco
+            saldo = Number(localStorage.getItem('walletSaldo')) || 0;
+            $('#saldoDisplay').text('$' + saldo);
+            updateTxCount();
+        });
+
+        // Además, al cambiar visibilidad de la pestaña (ej. volver desde otra), actualizamos
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                saldo = Number(localStorage.getItem('walletSaldo')) || 0;
+                $('#saldoDisplay').text('$' + saldo);
+                updateTxCount();
+            }
+        });
+
+        // ----------------------------
+        // Handlers para botones (con leyendas y redirección)
+        // ----------------------------
+        $('#btnLogout').click(function() {
+            localStorage.clear();
+            window.location.href = "login.html";
+        });
+
+        $('#btnDepositar').click(function(e) {
+            e.preventDefault();
+            $('#leyenda').text('Redirigiendo a pantalla de depósito').show();
+            var href = $(this).attr('href');
+            setTimeout(function() { window.location.href = href; }, 1000);
+        });
+
+        $('#btnEnviarDinero').click(function(e) {
+            e.preventDefault();
+            $('#leyenda1').text('Redirigiendo a pantalla de envío de dinero').show();
+            var href = $(this).attr('href');
+            setTimeout(function() { window.location.href = href; }, 1000);
+        });
+
+        $('#btnUltimoMov').click(function(e) {
+            e.preventDefault();
+            $('#leyenda2').text('Redirigiendo a pantalla de últimos movimientos').show();
+            var href = $(this).attr('href');
+            setTimeout(function() { window.location.href = href; }, 1000);
+        });
+    </script>
+</body>
+</html>
