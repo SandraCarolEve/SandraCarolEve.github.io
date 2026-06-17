@@ -86,7 +86,7 @@
                 Saldo: <strong id="saldoActual">$0.00</strong>
             </div>
             <!-- Botón para agregar contacto (ahora dentro del header para mayor visibilidad) -->
-            <button type="button" id="btnAgregarContacto" class="btn btn-sm ml-3">Agregar nuevo contacto</button>
+            <button type="button" id="btnAgregarContacto" class="btn btn-sm ml-3" onclick="$('#contactModal').show(); $('#contactNombre').focus();">Agregar nuevo contacto</button>
             <a id="btnVolverMenu" class="btn btn-sm ml-2" href="menu.html">Volver al Menú</a>
         </form>
 
@@ -274,7 +274,7 @@
         // Manejador para enviar dinero: abre un modal en vez de usar prompt()
         $(document).on('click', '.btn-enviar', function() {
             // Obtener el nombre mostrado en la interfaz para el contacto seleccionado
-            contactoSeleccionado = $(this).siblings('.contact-info').find('strong').text();
+            contactoSeleccionado = $(this).closest('li').find('.contact-info strong').text();
             // Mostrar el modal y actualizar el texto del destinatario
             $('#sendToName').text(contactoSeleccionado);
             $('#sendAmount').val('');
@@ -360,8 +360,9 @@
             $('#bottomConfirm').addClass('d-none');
         });
 
-        // Mostrar el modal ligero al pulsar "Agregar nuevo contacto"
-        $('#btnAgregarContacto').click(function() {
+        // Mostrar el modal ligero al pulsar "Agregar nuevo contacto" (delegated binding + log)
+        $(document).on('click', '#btnAgregarContacto', function() {
+            console.log('btnAgregarContacto clicked');
             $('#contactModal').show();
         });
 

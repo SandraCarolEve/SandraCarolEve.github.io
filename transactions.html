@@ -131,11 +131,31 @@
                     var signo = tx.positivo ? '+' : '-';
 
                     var $li = $('<li class="list-group-item"></li>');
-                    // Título/Descripción principal de la transacción
-                    // Añadimos una etiqueta con el tipo legible para facilitar la identificación
-                    $li.append('<h5>' + escapeHtml(tx.descripcion || '') + ' <span class="badge badge-secondary ml-2">' + escapeHtml(tipoLegible) + '</span></h5>');
-                    // Monto con color dependiendo si entra o sale dinero
-                    $li.append('<p class="' + amountClass + ' mb-1">' + signo + '$' + (tx.monto || 0) + '</p>');
+                    // Construir título/descripcion: usar tx.descripcion si existe,
+                    // si no, crear a partir del tipo y del destino (mostrar nombre si está disponible)
+                    var titulo = '';
+                    var descRaw = (tx.descripcion || '').toString();
+                    var aliasOrName = getDisplayName(tx) || '';
+                    // Si hay descripción explícita, respetarla salvo que sea genérica 'Transferencia' o termine en 'Transferencia a '
+                    if (descRaw.trim() !== '') {
+                        if ((/transferencia\s+a\s*$/i.test(descRaw) || /^transferencia\s*$/i.test(descRaw)) && aliasOrName) {
+                            // Mostrar como 'Transferido a <aliasOrName>' preferiendo el alias
+                            titulo = 'Transferido a ' + escapeHtml(aliasOrName);
+                        } else {
+                            titulo = escapeHtml(descRaw);
+                        }
+                    } else {
+                        if (tipoLower.indexOf('transfer') !== -1) {
+                            // Para transferencias sin descripción, mostrar 'Transferido a <alias>' cuando haya alias
+                            titulo = aliasOrName ? ('Transferido a ' + escapeHtml(aliasOrName)) : 'Transferencia';
+                        } else {
+                            titulo = escapeHtml(tipoLegible);
+                        }
+                    }
+                    $li.append('<h5>' + titulo + ' <span class="badge badge-secondary ml-2">' + escapeHtml(tipoLegible) + '</span></h5>');
+                    // Monto con color dependiendo si entra o sale dinero. Mostrar con dos decimales.
+                    var montoFormateado = Number(tx.monto || 0).toFixed(2);
+                    $li.append('<p class="' + amountClass + ' mb-1">' + signo + '$' + montoFormateado + '</p>');
                     // Fecha (si no hay, se usa la fecha local actual)
                     $li.append('<small>' + escapeHtml(tx.fecha || new Date().toLocaleString()) + '</small>');
 
@@ -180,6 +200,29 @@
                 return tipo.charAt(0).toUpperCase() + tipo.slice(1);
             }
 
+            // Helper: devuelve un nombre legible para mostrar como destino/alias/CBU.
+            // Prioriza `alias`, luego `destino.nombre` o `destino.name`, luego cualquier string dentro de `destino`, luego `cbu`.
+            function getDisplayName(tx) {
+                if (!tx) return '';
+                if (tx.alias && tx.alias.toString().trim() !== '') return tx.alias.toString().trim();
+                // destino puede ser string o objeto
+                if (tx.destino) {
+                    if (typeof tx.destino === 'string' && tx.destino.trim() !== '') return tx.destino.trim();
+                    if (typeof tx.destino === 'object') {
+                        if (tx.destino.nombre && tx.destino.nombre.toString().trim() !== '') return tx.destino.nombre.toString().trim();
+                        if (tx.destino.name && tx.destino.name.toString().trim() !== '') return tx.destino.name.toString().trim();
+                        // buscar primera propiedad que sea string y no vacía
+                        for (var k in tx.destino) {
+                            if (!tx.destino.hasOwnProperty(k)) continue;
+                            var v = tx.destino[k];
+                            if (typeof v === 'string' && v.trim() !== '') return v.trim();
+                        }
+                    }
+                }
+                if (tx.cbu && tx.cbu.toString().trim() !== '') return tx.cbu.toString().trim();
+                return '';
+            }
+
             // Normalizar los tipos en las transacciones existentes, eliminar entradas
             // cuya normalización resulte en 'Compra' y guardar de vuelta.
             if (transactions && transactions.length > 0) {
@@ -205,6 +248,34 @@
                     localStorage.setItem('walletTransactions', JSON.stringify(transactions));
                 }
             }
+
+            // ----------------------------
+            // NORMALIZAR DESCRIPCIONES DE TRANSFERENCIAS
+            // Completa descripciones vacías o genéricas ('Transferencia' o 'Transferencia a')
+            // usando `alias`, `destino.nombre` o `cbu` si están disponibles.
+            function normalizeTransferDescriptions() {
+                var saved = false;
+                transactions.forEach(function(tx) {
+                    var tipo = getTipoTransaccion(tx.tipo).toString().toLowerCase();
+                    if (tipo.indexOf('transfer') === -1) return;
+
+                    var desc = (tx.descripcion || '').toString().trim();
+                    var aliasOrName = getDisplayName(tx) || '';
+
+                    if (!desc || /^transferencia\s*$/i.test(desc) || /transferencia\s+a\s*$/i.test(desc)) {
+                        if (aliasOrName) {
+                            tx.descripcion = 'Transferido a ' + aliasOrName;
+                        } else {
+                            tx.descripcion = 'Transferencia';
+                        }
+                        saved = true;
+                    }
+                });
+                if (saved) localStorage.setItem('walletTransactions', JSON.stringify(transactions));
+            }
+
+            // Ejecutar normalización de descripciones antes de renderizar
+            normalizeTransferDescriptions();
 
             // ----------------------------
             // MOSTRAR DETALLES DE LA ÚLTIMA OPERACIÓN
